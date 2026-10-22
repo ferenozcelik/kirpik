@@ -1,20 +1,22 @@
 import AppKit
 
 enum Tool: Int, CaseIterable {
-    case select, pen, line, arrow, rectangle, ellipse, marker, text, pixelate, counter
+    case select, pen, line, arrow, rectangle, filledRectangle, ellipse, marker, text, pixelate, counter
 
+    /// Shown when hovering the tool's button.
     var title: String {
         switch self {
-        case .select: return "Select and move"
-        case .pen: return "Pen"
-        case .line: return "Line (⇧ snaps to 45°)"
-        case .arrow: return "Arrow (⇧ snaps to 45°)"
-        case .rectangle: return "Rectangle (⇧ for square)"
-        case .ellipse: return "Ellipse (⇧ for circle)"
-        case .marker: return "Marker"
-        case .text: return "Text"
-        case .pixelate: return "Pixelate"
-        case .counter: return "Numbered step"
+        case .select: return "Select: move or resize the selection"
+        case .pen: return "Pen: draw freehand"
+        case .line: return "Line: hold ⇧ for 45° angles"
+        case .arrow: return "Arrow: hold ⇧ for 45° angles"
+        case .rectangle: return "Rectangle: outline, hold ⇧ for a square"
+        case .filledRectangle: return "Filled rectangle: solid box to cover something"
+        case .ellipse: return "Ellipse: hold ⇧ for a circle"
+        case .marker: return "Marker: translucent highlighter"
+        case .text: return "Text: click to type, ↩ to finish"
+        case .pixelate: return "Pixelate: hide sensitive information"
+        case .counter: return "Numbered step: click to place 1, 2, 3…"
         }
     }
 
@@ -25,6 +27,7 @@ enum Tool: Int, CaseIterable {
         case .line: return "line.diagonal"
         case .arrow: return "arrow.up.right"
         case .rectangle: return "rectangle"
+        case .filledRectangle: return "rectangle.fill"
         case .ellipse: return "circle"
         case .marker: return "highlighter"
         case .text: return "textformat"
@@ -39,7 +42,7 @@ enum Tool: Int, CaseIterable {
         case .pen: return .pen
         case .line: return .line
         case .arrow: return .arrow
-        case .rectangle: return .rectangle
+        case .rectangle, .filledRectangle: return .rectangle
         case .ellipse: return .ellipse
         case .marker: return .marker
         case .text: return .text
@@ -80,11 +83,6 @@ enum ToolStyle {
             let clamped = min(max(newValue, widthRange.lowerBound), widthRange.upperBound)
             UserDefaults.standard.set(Double(clamped), forKey: "styleWidth")
         }
-    }
-
-    static var filled: Bool {
-        get { UserDefaults.standard.bool(forKey: "styleFilled") }
-        set { UserDefaults.standard.set(newValue, forKey: "styleFilled") }
     }
 
     static func swatch(_ color: NSColor, size: CGFloat = 16) -> NSImage {

@@ -5,7 +5,8 @@ A lightweight, local screenshot tool for macOS. Native on Apple Silicon.
 - Press **⌘⇧9** (configurable in Settings), drag to select an area on any screen
 - Resize the selection from its corners and edges, move it with the select tool
 - Magnifier with pixel position and color while selecting
-- Annotate: pen, line, arrow, rectangle, ellipse, marker, text, pixelate, numbered steps
+- Annotate: pen, line, arrow, rectangle, filled rectangle, ellipse, marker, text, pixelate, numbered steps
+- Hover a toolbar button for a short description
 - Copy to clipboard or save as PNG
 - **Copy text (OCR)** from the selection, on-device with Apple's Vision framework
 - **Copy color** as a hex code with the eyedropper

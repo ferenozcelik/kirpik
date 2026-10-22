@@ -3,6 +3,10 @@ import AppKit
 /// Dark floating button bar shown next to the selection.
 final class Toolbar: NSVisualEffectView {
     private let stack = NSStackView()
+    /// Called when the pointer enters (true) or leaves (false) one of the buttons.
+    var onHover: ((ToolbarButton, Bool) -> Void)?
+
+    var orientation: NSUserInterfaceLayoutOrientation { stack.orientation }
 
     init(orientation: NSUserInterfaceLayoutOrientation) {
         super.init(frame: .zero)
@@ -39,7 +43,9 @@ final class Toolbar: NSVisualEffectView {
     @discardableResult
     func addButton(image: NSImage, tooltip: String, target: AnyObject, action: Selector) -> ToolbarButton {
         let button = ToolbarButton(image: image, target: target, action: action)
-        button.toolTip = tooltip
+        button.tip = tooltip
+        button.setAccessibilityLabel(tooltip)
+        button.onHover = { [weak self] button, inside in self?.onHover?(button, inside) }
         stack.addArrangedSubview(button)
         return button
     }
@@ -61,6 +67,10 @@ final class Toolbar: NSVisualEffectView {
 }
 
 final class ToolbarButton: NSButton {
+    var tip = ""
+    var onHover: ((ToolbarButton, Bool) -> Void)?
+    private var hoverArea: NSTrackingArea?
+
     var isActive = false {
         didSet { layer?.backgroundColor = isActive ? NSColor.controlAccentColor.cgColor : nil }
     }
@@ -82,6 +92,23 @@ final class ToolbarButton: NSButton {
 
     override var isEnabled: Bool {
         didSet { alphaValue = isEnabled ? 1 : 0.35 }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                  owner: self)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onHover?(self, true)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onHover?(self, false)
     }
 
     override func resetCursorRects() {

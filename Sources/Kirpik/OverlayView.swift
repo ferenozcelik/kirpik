@@ -42,7 +42,8 @@ final class OverlayView: NSView, NSTextFieldDelegate {
     private let actionsBar = Toolbar(orientation: .horizontal)
     private let colorsBar = Toolbar(orientation: .vertical)
     private var toolButtons: [Tool: ToolbarButton] = [:]
-    private var fillButton: ToolbarButton!
+    private let tipView = NSView()
+    private let tipLabel = NSTextField(labelWithString: "")
     private var colorButton: ToolbarButton!
     private var undoButton: ToolbarButton!
     private var redoButton: ToolbarButton!
@@ -223,6 +224,7 @@ final class OverlayView: NSView, NSTextFieldDelegate {
     override func mouseDown(with event: NSEvent) {
         window?.makeKey()
         colorsBar.isHidden = true
+        hideTip()
         let raw = clamped(convert(event.locationInWindow, from: nil))
         let point = snapped(raw)
 
@@ -258,7 +260,7 @@ final class OverlayView: NSView, NSTextFieldDelegate {
         default:
             guard let kind = tool.annotationKind else { return }
             current = Annotation(kind: kind, points: [raw, raw], color: ToolStyle.color,
-                                 width: ToolStyle.width, filled: ToolStyle.filled)
+                                 width: ToolStyle.width, filled: tool == .filledRectangle)
             drag = .drawing
         }
         needsDisplay = true
@@ -578,10 +580,8 @@ final class OverlayView: NSView, NSTextFieldDelegate {
             toolButtons[tool] = button
         }
         toolsBar.addSeparator()
-        fillButton = toolsBar.addButton(symbol: "square.fill", tooltip: "Fill shapes", target: self,
-                                        action: #selector(toggleFill))
         colorButton = toolsBar.addButton(image: ToolStyle.swatch(ToolStyle.color),
-                                         tooltip: "Color (scroll to change size)", target: self,
+                                         tooltip: "Color: scroll anywhere to change the size", target: self,
                                          action: #selector(toggleColors))
 
         for (index, entry) in ToolStyle.palette.enumerated() {
@@ -595,27 +595,66 @@ final class OverlayView: NSView, NSTextFieldDelegate {
         redoButton = actionsBar.addButton(symbol: "arrow.uturn.forward", tooltip: "Redo (⇧⌘Z)",
                                           target: self, action: #selector(redo))
         actionsBar.addSeparator()
-        actionsBar.addButton(symbol: "text.viewfinder", tooltip: "Copy text (OCR)",
+        actionsBar.addButton(symbol: "text.viewfinder", tooltip: "Copy text: recognize the text in the selection",
                              target: self, action: #selector(recognizeText))
-        actionsBar.addButton(symbol: "eyedropper", tooltip: "Copy color", target: self, action: #selector(pickColor))
+        actionsBar.addButton(symbol: "eyedropper", tooltip: "Copy color: click any pixel to copy its hex code",
+                             target: self, action: #selector(pickColor))
         actionsBar.addSeparator()
-        actionsBar.addButton(symbol: "square.and.arrow.down", tooltip: "Save (⌘S)",
+        actionsBar.addButton(symbol: "square.and.arrow.down", tooltip: "Save as PNG (⌘S)",
                              target: self, action: #selector(saveImage))
-        actionsBar.addButton(symbol: "doc.on.doc", tooltip: "Copy (⌘C or ↩)",
+        actionsBar.addButton(symbol: "doc.on.doc", tooltip: "Copy to clipboard (⌘C or ↩)",
                              target: self, action: #selector(copyImage))
         actionsBar.addButton(symbol: "xmark", tooltip: "Close (esc)", target: self, action: #selector(close))
 
         for bar in [toolsBar, actionsBar, colorsBar] {
             bar.sizeToFit()
             bar.isHidden = true
+            bar.onHover = { [weak self, weak bar] button, inside in
+                guard let self, let bar else { return }
+                inside ? self.showTip(for: button, in: bar) : self.hideTip()
+            }
             addSubview(bar)
         }
+
+        // macOS tooltips open below the overlay's window level, so hover hints are drawn here instead.
+        tipView.wantsLayer = true
+        tipView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.85).cgColor
+        tipView.layer?.cornerRadius = 5
+        tipLabel.font = .systemFont(ofSize: 12)
+        tipLabel.textColor = .white
+        tipView.addSubview(tipLabel)
+        tipView.isHidden = true
+        addSubview(tipView)
+
         updateToolbarState()
+    }
+
+    private func showTip(for button: ToolbarButton, in bar: Toolbar) {
+        tipLabel.stringValue = button.tip
+        let labelSize = tipLabel.fittingSize
+        let size = CGSize(width: labelSize.width + 16, height: labelSize.height + 8)
+        tipLabel.frame = CGRect(x: 8, y: 4, width: labelSize.width, height: labelSize.height)
+
+        let anchor = button.convert(button.bounds, to: self)
+        var origin: CGPoint
+        if bar.orientation == .vertical {
+            origin = CGPoint(x: bar.frame.maxX + 6, y: anchor.midY - size.height / 2)
+            if origin.x + size.width > bounds.maxX - 4 { origin.x = bar.frame.minX - 6 - size.width }
+        } else {
+            origin = CGPoint(x: anchor.midX - size.width / 2, y: bar.frame.minY - 6 - size.height)
+            if origin.y < 4 { origin.y = bar.frame.maxY + 6 }
+        }
+        origin.x = min(max(origin.x, 4), bounds.maxX - size.width - 4)
+        tipView.frame = CGRect(origin: origin, size: size)
+        tipView.isHidden = false
+    }
+
+    private func hideTip() {
+        tipView.isHidden = true
     }
 
     private func updateToolbarState() {
         for (tool, button) in toolButtons { button.isActive = tool == self.tool }
-        fillButton.isActive = ToolStyle.filled
         colorButton.image = ToolStyle.swatch(ToolStyle.color)
         undoButton.isEnabled = !annotations.isEmpty
         redoButton.isEnabled = !redoStack.isEmpty
@@ -625,6 +664,7 @@ final class OverlayView: NSView, NSTextFieldDelegate {
         let visible = selection != nil && !isCreatingSelection && session?.isPickingColor != true
         toolsBar.isHidden = !visible
         actionsBar.isHidden = !visible
+        hideTip()
         guard visible, let selection else {
             colorsBar.isHidden = true
             return
@@ -668,11 +708,6 @@ final class OverlayView: NSView, NSTextFieldDelegate {
         self.tool = tool
         updateToolbarState()
         needsDisplay = true
-    }
-
-    @objc private func toggleFill() {
-        ToolStyle.filled.toggle()
-        updateToolbarState()
     }
 
     @objc private func toggleColors() {
