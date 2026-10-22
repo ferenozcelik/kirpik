@@ -57,3 +57,7 @@ Press **⌘⇧9** and drag to select an area. Hover a toolbar button to see what
 ## Privacy
 
 Kirpik has no network access. Screenshots, OCR and settings never leave your Mac.
+
+## License
+
+Released under the [MIT License](LICENSE).
