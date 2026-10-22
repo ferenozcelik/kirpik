@@ -110,8 +110,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        let icon = NSImage(systemSymbolName: "crop", accessibilityDescription: "Kirpik")
-        icon?.isTemplate = true
+        // The colored app icon, same as in the Dock and Finder.
+        let icon = NSApp.applicationIconImage.copy() as! NSImage
+        icon.size = NSSize(width: 18, height: 18)
+        icon.accessibilityDescription = "Kirpik"
         statusItem.button?.image = icon
 
         let menu = NSMenu()
